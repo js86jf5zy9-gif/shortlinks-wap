@@ -1,5 +1,6 @@
 import config, { shortLinkBase } from '../config';
 import { encodeBase64Url } from './base64url';
+import { isValidShortcode } from './urls';
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -18,14 +19,16 @@ const request = async (path, init) => {
   return res.json();
 };
 
-// POST /links/{base64url(url)} -> { shortcode }
+// POST /links/{base64url(url)} -> { shortcode }. The API returns the code with
+// a leading slash ("/26a198"), so strip slashes before building the link.
 export const shortenUrl = async (url) => {
   const data = await request(`/links/${encodeBase64Url(url)}`, {
     method: 'POST',
     body: '{}',
   });
-  if (!data?.shortcode) throw new ApiError('Missing shortcode in response');
-  return { shortcode: data.shortcode, shortUrl: shortLinkBase + data.shortcode };
+  const shortcode = String(data?.shortcode ?? '').replace(/^\/+|\/+$/g, '');
+  if (!isValidShortcode(shortcode)) throw new ApiError('Missing or invalid shortcode in response');
+  return { shortcode, shortUrl: shortLinkBase + shortcode };
 };
 
 // GET /v/{shortcode} -> { Item: { link, redirects, viewers } }; null if unknown.

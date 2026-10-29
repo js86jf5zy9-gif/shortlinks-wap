@@ -145,7 +145,7 @@ Base: `config.apiUrl` (default `https://api.url2qr.com`).
 
 | Call | Request | Expected 200 response |
 | --- | --- | --- |
-| `shortenUrl(url)` | `POST /links/{base64url(url)}`, body `{}` | `{ "shortcode": "abc123" }` |
+| `shortenUrl(url)` | `POST /links/{base64url(url)}`, body `{}` | `{ "shortcode": "/abc123" }` (leading slash is stripped by the client) |
 | `fetchLink(shortcode)` | `GET /v/{shortcode}` | `{ "Item": { "link": "https://…", "redirects": 3, "viewers": [ … ] } }` |
 
 `Item` follows DynamoDB `GetItem` shape; a missing `Item` means unknown shortcode.

@@ -17,14 +17,22 @@ describe('shortenUrl', () => {
     expect(decodeBase64Url(segment)).toBe(url);
   });
 
+  it('strips the leading slash the API includes in the shortcode', async () => {
+    respond({ shortcode: '/26a198' });
+    await expect(shortenUrl('https://example.com/')).resolves.toEqual({
+      shortcode: '26a198',
+      shortUrl: 'https://url2qr.com/26a198',
+    });
+  });
+
   it('throws on HTTP errors', async () => {
     respond({}, 500);
     await expect(shortenUrl('https://example.com/')).rejects.toBeInstanceOf(ApiError);
   });
 
-  it('throws when the shortcode is missing', async () => {
-    respond({});
-    await expect(shortenUrl('https://example.com/')).rejects.toThrow('Missing shortcode');
+  it.each([{}, { shortcode: '/' }, { shortcode: 'a/b' }])('rejects a bad shortcode in %j', async (body) => {
+    respond(body);
+    await expect(shortenUrl('https://example.com/')).rejects.toThrow('invalid shortcode');
   });
 });
 
