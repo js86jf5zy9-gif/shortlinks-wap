@@ -1,0 +1,90 @@
+.space {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 120%, #0d1630 0%, #05070f 60%) #05070f;
+}
+
+.space > * {
+  will-change: transform;
+}
+
+.space__layer {
+  position: absolute;
+  inset: 0;
+}
+
+.space__nebula {
+  bottom: -20vh;
+  background:
+    radial-gradient(40vmax 30vmax at 15% 20%, rgba(92, 70, 180, 0.22), transparent 70%),
+    radial-gradient(35vmax 25vmax at 85% 45%, rgba(40, 110, 190, 0.18), transparent 70%),
+    radial-gradient(30vmax 22vmax at 55% 5%, rgba(170, 60, 140, 0.12), transparent 70%);
+}
+
+.space__stars {
+  background-repeat: repeat;
+}
+
+.space__stars--near {
+  animation: space-twinkle 6s ease-in-out infinite alternate;
+}
+
+.space__moon {
+  position: absolute;
+  top: clamp(72px, 11vh, 140px);
+  right: clamp(16px, 9vw, 160px);
+  width: clamp(72px, 13vw, 170px);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 0 28px rgba(255, 246, 220, 0.28));
+}
+
+.space__moon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Night-side Earth photo. Its horizon sits ~30% down the image, so the layer
+   starts high enough for the limb to peek over the bottom of the first screen
+   and rises (up to 55vh) as you scroll. The top fades so the CSS stars show. */
+.space__earth {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 40vh;
+  height: max(66.7vw, 130vh);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 24%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 24%);
+}
+
+@media (orientation: portrait) {
+  .space__earth {
+    top: 46vh;
+  }
+}
+
+/* Keep the moon clear of the title on narrow screens. */
+@media (max-width: 600px) {
+  .space__moon {
+    top: 10px;
+    right: 10px;
+    width: 60px;
+  }
+}
+
+@keyframes space-twinkle {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space__stars--near {
+    animation: none;
+  }
+}

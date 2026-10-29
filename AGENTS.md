@@ -4,38 +4,32 @@ Guidance for AI coding agents working in this repository.
 
 ## What this is
 
-**Shortlinks / URL2QR client** (`package.json` name: `url2qr-client`): a single-page
-React app that shortens URLs, renders a QR code for the short link, shows stats for
-an existing short link, and performs client-side redirects when visited at
-`/<shortcode>`. It is a frontend only; the API lives in a separate backend
-(`api.url2qr.com`). The production domain is `url2qr.com`.
+**url2qr client** (`package.json` name: `url2qr-client`): a single-page React app
+that shortens URLs, renders a downloadable QR code for the short link, shows stats
+for an existing short link, and performs client-side redirects when visited at
+`/<shortcode>`. It is a frontend only; the API is a separate backend
+(`https://api.url2qr.com`). The production domain is `url2qr.com`.
 
-Stack: Create React App (`react-scripts` 4.0.3), React 17, Material-UI v4
-(`@material-ui/core`, `@material-ui/icons`), axios, `qrcode`. Plain JavaScript (no
-TypeScript), components use `.jsx`.
+Stack: Vite 8, React 19, MUI 9 (`@mui/material`, Emotion), `qrcode`,
+`vite-plugin-pwa` (Workbox service worker), Vitest + Testing Library, ESLint 10
+(flat config). Plain JavaScript, components are `.jsx`. Requires Node ≥ 20.19.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `npm install` | Install dependencies. |
-| `npm start` | Dev server at http://localhost:3000. |
-| `npm run build` | Production build into `build/`. |
-| `npm test` | Jest + Testing Library in watch mode (use `CI=true npm test` for a single run). |
-| `npm run create-bucket` / `npm run delete-bucket` | Create or remove the S3 bucket named in `.env` (AWS CLI). |
-| `npm run deploy` | Clean `build/`, rebuild, upload to S3 and invalidate CloudFront (`deploy-aws-s3-cloudfront`). |
-| `npm run redeploy` | Upload the existing `build/` without rebuilding. |
+| `npm install` | Install dependencies (npm only; `package-lock.json` is authoritative). |
+| `npm run dev` (or `npm start`) | Vite dev server at http://localhost:5173. The service worker is **not** active in dev. |
+| `npm run build` | Production build into `dist/` (includes `sw.js` and `manifest.webmanifest`). |
+| `npm run preview` | Serve `dist/` at http://localhost:4173. Use this to test the service worker. |
+| `npm test` | Run the Vitest suite once (jsdom). `npm run test:watch` for watch mode. |
+| `npm run lint` | ESLint over the repo. |
+| `npm run deploy` | Build, then `npm run redeploy`. |
+| `npm run redeploy` | `scripts/deploy.sh`: upload `dist/` to S3 with correct Cache-Control and invalidate CloudFront. |
+| `npm run create-bucket` / `delete-bucket` | Create/remove the S3 bucket named in `.env` (AWS CLI). |
 
-Notes:
-- **Node version:** `react-scripts` 4 uses webpack 4, which fails on Node ≥ 17 with
-  `ERR_OSSL_EVP_UNSUPPORTED`. Use Node 16, or prefix commands with
-  `NODE_OPTIONS=--openssl-legacy-provider`.
-- Both `package-lock.json` and `yarn.lock` are committed. The README and scripts use
-  npm; keep `package-lock.json` authoritative and avoid mixing package managers.
-- There are **no tests** yet (`src/setupTests.js` only loads `jest-dom`). Put new
-  tests next to the code as `*.test.js(x)`.
-- Linting is CRA's built-in ESLint (`react-app`, `react-app/jest`), surfaced during
-  `start`/`build`. There is no separate lint script and no Prettier config.
+CI (`.github/workflows/ci.yml`) runs `npm ci`, lint, test and build on pushes to
+`main`/`master` and on PRs. Before pushing, run `npm run lint && npm test && npm run build`.
 
 ## Environment setup
 
@@ -44,80 +38,125 @@ cp env.sample .env
 npm install
 ```
 
-`.env` (git-ignored) is **only used by the AWS npm scripts**, which run
-`source .env` (needs a bash-compatible shell for npm scripts):
+`.env` and `.env.*` are git-ignored. Vite reads `VITE_*` variables at build time;
+the deploy scripts `source .env` for the AWS variables.
 
 | Variable | Used by | Meaning |
 | --- | --- | --- |
-| `BUCKETNAME` | create/delete-bucket, deploy | S3 bucket hosting the build |
-| `DIS` | deploy, redeploy | CloudFront distribution ID |
-| `AWS_PROFILE` | all AWS scripts | AWS CLI profile |
-| `REGION` | create/delete-bucket | AWS region |
-| `API_SERVER` | **nothing** | Unused. CRA only exposes `REACT_APP_*` vars to the bundle, and the code reads the API host from `src/data/settings.json`. |
+| `VITE_GA_MEASUREMENT_ID` | `src/lib/analytics.js` | GA4 ID (`G-…`). Empty/unset = no analytics. Only loaded in production builds and when Do Not Track is off. |
+| `VITE_API_URL` | `src/config.js` | Optional API base URL override (e.g. `http://localhost:5005`). Default: `settings.json` → `api`. |
+| `VITE_SHORT_DOMAIN` | `src/config.js` | Optional short-link domain override. Default: `settings.json` → `domain`. |
+| `BUCKETNAME`, `DIS`, `AWS_PROFILE`, `REGION` | AWS scripts | S3 bucket, CloudFront distribution ID, AWS CLI profile, region. |
 
-The AWS scripts need the AWS CLI installed and configured. To point the app at a
-different API or domain, edit `src/data/settings.json` (see below); the app always
-calls the API over `https://`.
+**Analytics ID handling:** keep the real `VITE_GA_MEASUREMENT_ID` only in `.env` or
+a CI secret (`secrets.VITE_GA_MEASUREMENT_ID`), never in committed files. Note that
+any `VITE_*` value is compiled into the public JS bundle, so the ID is hidden from
+the repo, not from site visitors. That is inherent to client-side analytics. The
+old ID still exists in git history from before this change.
 
-Hosting assumption: S3 + CloudFront. Because shortcodes are served as paths
-(`https://url2qr.com/abc123`), CloudFront/S3 must route unknown paths (403/404) to
-`index.html` so the SPA can handle them.
+Hosting: S3 + CloudFront. Shortcodes are served as paths (`/abc123`), so CloudFront
+must route 403/404 to `/index.html` (status 200). Once the service worker is
+installed it serves the cached shell for those paths itself.
 
 ## Architecture
 
 ```
+index.html                 # Vite entry HTML (no inline analytics)
+vite.config.js             # React + PWA plugins, Vitest config
+scripts/deploy.sh          # S3/CloudFront upload with cache headers
 src/
-  index.js              # ReactDOM.render(<App/>) + web-vitals
-  views/App.js          # Page shell: Header, Converter, Footer (FeatureList commented out)
+  main.jsx                 # createRoot, ThemeProvider/CssBaseline, initAnalytics()
+  App.jsx                  # Picks <Redirect> (path is a shortcode) or <Converter> + HowItWorks
+  theme.js                 # MUI dark theme (palette, glass Paper, button sizes)
+  config.js                # Merges settings.json with VITE_* env overrides
   components/
-    Converter.jsx       # All app logic/state: input, shorten, inspect, redirect, copy
-    StyledInput.jsx     # Styled MUI TextField
-    Qrcode.jsx          # <canvas id="canvas"> filled by utils/genQR
-    Stats.jsx           # Shows link, redirect count, view count for a shortcode
-    Header.jsx, Footer.jsx
-    FeatureList.jsx, Feature.jsx, Text.jsx   # Currently unused (see gotchas)
-  actions/index.js      # API calls: shortenUrl, viewUrl
-  utils/
-    adapter.js          # axios instance factory; exports `host` and `api` base URLs
-    validateUrl.js      # URL regex validation + shortcodeUrl() detection of own links
-    genQR.js            # qrcode.toCanvas with brand colours, error correction 'H'
-    clipboardCopy.js    # select + document.execCommand('copy')
-    highlight.js        # focus/select an element by CSS selector
-  data/
-    settings.json       # Domain/API hosts and theme constants
-    strings.json        # All UI copy
-  styles/App.css, index.css, images/earth-nasa.jpeg (background)
-public/                 # CRA index.html (includes Google Analytics gtag), manifest, icons
+    SpaceBackground.jsx/.css  # Fixed parallax sky: nebula, 3 star layers, moon, Earth photo
+    Moon.jsx               # SVG moon used by SpaceBackground
+    Converter.jsx          # Input form: shorten a URL or inspect one of our short links
+    ShortLinkResult.jsx    # Short link field, copy button, QR code
+    QrCode.jsx             # <canvas> QR via lib/qr + PNG download
+    Stats.jsx              # Destination, redirect count, unique viewers
+    Redirect.jsx           # /<shortcode> handling (redirect or preview)
+    UpdatePrompt.jsx       # "New version available → Reload" snackbar
+    Header.jsx, HowItWorks.jsx, Footer.jsx
+  hooks/useParallax.js     # Scroll-driven transforms for [data-parallax-rate] layers
+  lib/
+    api.js                 # fetch-based API client (shortenUrl, fetchLink, ApiError)
+    base64url.js           # UTF-8 safe base64url encode/decode
+    urls.js                # normalizeUrl, shortcodeFromInput/Path, safeRedirectTarget
+    swUpdates.js           # watchForUpdates (periodic/visibility checks), applyUpdate
+    analytics.js           # Env-driven GA4 loader
+    starfield.js           # Seeded SVG star tiles + layer definitions
+    qr.js, clipboard.js
+  data/settings.json, data/strings.json
+  assets/earth.webp        # Night-side Earth photo (resized from the original NASA image)
+  test/setup.js, test/pwaRegisterStub.js
 ```
 
-### Flow in `Converter.jsx`
+### App flow
 
-1. **Shorten**: user types a URL → `validateUrl` → value is base64-encoded with
-   `btoa` → `shortenUrl` → short link `https://<domain>/<shortcode>` is shown with a
-   QR code and a click-to-copy field.
-2. **Inspect**: if the input is one of our own short links (`shortcodeUrl` matches
-   `settings.domain`), the button switches to "Inspect" and `viewUrl` loads stats
-   into `<Stats>`.
-3. **Redirect**: on load, if `window.location.pathname` is `/<shortcode>`, the app
-   renders "Redirecting to…", calls `viewUrl`, and sets `window.location.href` to the
-   target link. If the URL has **any query string** (e.g. `/abc123?`), it skips the
-   redirect and shows the stats instead.
+- **Shorten:** input → `normalizeUrl` (adds `https://` when missing, http(s) only,
+  ≤ `maxUrlLength`) → `shortenUrl` → `ShortLinkResult` with copy and QR download.
+- **Inspect:** if the input is one of our own short links (`shortcodeFromInput`
+  matches `domain` or `www.domain` and a single `[A-Za-z0-9_-]` segment), the
+  button becomes "Inspect" and `fetchLink` loads `<Stats>`.
+- **Redirect:** `App` reads `window.location.pathname`; a shortcode path renders
+  `<Redirect>`, which calls `fetchLink` and `window.location.replace`s to the
+  target. **Any query string** (e.g. `/abc123?stats`) shows a preview with stats
+  and a "Continue" button instead. Only http(s) targets are followed
+  (`safeRedirectTarget`); legacy links stored without a scheme get `https://`.
 
-Button label (`btnText`) doubles as UI state: the button is hidden when it equals
-`strings.converter.btnDone`.
+### Parallax background
+
+`SpaceBackground` is `position: fixed` behind the content. Each layer has
+`data-parallax-rate` (fraction of `scrollY` it moves up). Optional
+`data-parallax-tile` wraps the offset for seamless repeating star tiles, and
+`data-parallax-max-vh` caps the travel (Earth stops at 55vh). `useParallax` writes
+`translate3d` once per animation frame and holds the layers still under
+`prefers-reduced-motion`. Rates, back to front: nebula 0.03, stars 0.06 / 0.14 /
+0.26, moon 0.38, Earth 0.55. To add a layer, add an element with these data
+attributes inside `.space`.
+
+### Service worker updates
+
+`vite-plugin-pwa` in `registerType: 'prompt'` mode precaches the build and serves
+`index.html` for navigations. Updates are made reliable by:
+
+1. `watchForUpdates` (`src/lib/swUpdates.js`) calls `registration.update()`
+   hourly and whenever the tab becomes visible. It first fetches `sw.js` with
+   `cache: 'no-store'` and skips the check while offline or already installing.
+2. `UpdatePrompt` shows a snackbar when a new worker is waiting. **Reload** calls
+   `applyUpdate`, which sends SKIP_WAITING and reloads on `controllerchange`, with
+   a timeout fallback. vite-plugin-pwa's own reload doesn't fire for updates
+   found by manual `update()` calls, so don't replace this with a bare
+   `updateServiceWorker(true)`.
+3. `scripts/deploy.sh` uploads `index.html`, `sw.js`, `registerSW.js` and
+   `manifest.webmanifest` with `Cache-Control: no-cache`, and hashed
+   `assets/**` / `workbox-*.js` as immutable. Deploy with this script so CDN
+   caching can't hide a release.
+4. `cleanupOutdatedCaches` removes old precaches after activation.
+
+To test locally: `npm run build && npm run preview`, load the page, rebuild with a
+visible change, then switch tabs away and back. The prompt should appear.
 
 ### Backend API contract (as consumed by the client)
 
-Base: `https://${settings.api}`
+Base: `config.apiUrl` (default `https://api.url2qr.com`).
 
 | Call | Request | Expected 200 response |
 | --- | --- | --- |
-| `shortenUrl(url64)` | `POST /links/{base64(url)}` with body `{}` | `{ "shortcode": "abc123" }` |
-| `viewUrl(shortcode)` | `GET /v/{shortcode}` | `{ "Item": { "link": "https://…", "redirects": 3, "viewers": [ … ] } }` |
+| `shortenUrl(url)` | `POST /links/{base64url(url)}`, body `{}` | `{ "shortcode": "abc123" }` |
+| `fetchLink(shortcode)` | `GET /v/{shortcode}` | `{ "Item": { "link": "https://…", "redirects": 3, "viewers": [ … ] } }` |
 
-`Item` follows a DynamoDB `GetItem` shape; a missing/falsey `Item` means unknown
-shortcode. The view count shown is `viewers.length`. Any non-200 or thrown error is
-passed to the `onError` callback.
+`Item` follows DynamoDB `GetItem` shape; a missing `Item` means unknown shortcode.
+Non-2xx responses throw `ApiError` (with `.status`).
+
+**URL encoding:** the URL is UTF-8 encoded, then base64url-encoded (RFC 4648 §5:
+`-`/`_` instead of `+`/`/`, padding kept). Standard base64 could contain `/`, which
+split the path segment and broke those links. The backend must decode with a
+base64url-aware decoder. Node's `Buffer.from(s, 'base64')` accepts both alphabets
+as-is. Python needs `base64.urlsafe_b64decode`, not `b64decode`, which silently
+drops `-`/`_`.
 
 ## Content schemas
 
@@ -125,55 +164,61 @@ passed to the `onError` callback.
 
 ```jsonc
 {
-  "domain": "url2qr.com",      // short-link host; also used to detect own links
-  "api": "api.url2qr.com",     // API host, no scheme (https:// is prepended)
-  "white": "#edf6f9",          // input text colour
-  "gray": "#b2b9bb",           // input label colour
-  "padding": 4,                // base padding/border radius (px) for StyledInput
-  "limit": 2048                // max URL length — defined but not enforced anywhere yet
+  "domain": "url2qr.com",            // short-link host; also used to detect our own links
+  "api": "https://api.url2qr.com",   // API base URL (with scheme, no trailing slash)
+  "maxUrlLength": 2048               // max accepted input length, enforced by normalizeUrl
 }
 ```
+
+Env overrides: `VITE_SHORT_DOMAIN` → `domain`, `VITE_API_URL` → `api`. Theme
+colours live in `src/theme.js`, not here.
 
 ### `src/data/strings.json`
 
-All user-facing copy. `App.js` destructures the top-level keys and passes them down:
+All user-facing copy. Components import it directly. `{max}` in `tooLong` is
+substituted with `maxUrlLength`.
 
 ```jsonc
 {
-  "header":   { "title": "string", "caption": "string" },          // -> <Header {...header}/>
-  "footer":   { "link": "url", "creator": "string" },              // -> <Footer {...footer}/>
-  "converter": {                                                    // -> <Converter strings={converter}/>
-    "inputLabel": "string", "outputLabel": "string", "ph": "string",
-    "btnGo": "string", "btnView": "string", "btnDone": "string", "btnError": "string",
-    "copyDefault": "string", "copySuccess": "string", "copyFailed": "string"
+  "header":    { "title": "string", "caption": "string" },
+  "converter": {
+    "inputLabel": "string", "inputHelp": "string", "invalid": "string", "tooLong": "string with {max}",
+    "btnGo": "string", "btnView": "string", "btnReset": "string",
+    "outputLabel": "string", "copy": "string", "copied": "string", "copyFailed": "string",
+    "download": "string", "serverError": "string", "unknown": "string"
   },
-  "features": [                                                     // -> <FeatureList strings={features}/> (disabled)
-    { "name": "string", "description": "string", "link": "url" }
-  ]
+  "stats":     { "title": "string", "link": "string", "redirects": "string", "views": "string" },
+  "redirect":  {
+    "redirecting": "string", "preview": "string", "continue": "string",
+    "unknown": "string", "unsafe": "string", "error": "string", "home": "string"
+  },
+  "stepsTitle": "string",
+  "steps":     [ { "title": "string", "body": "string" } ],   // HowItWorks cards; icons by index
+  "update":    { "available": "string", "reload": "string" },
+  "footer":    { "link": "url", "creator": "string" }
 }
 ```
 
-When adding UI text, add a key here rather than hard-coding strings in components
-(the "Redirecting to..." text in `Converter.jsx` is a current exception).
+Tests look up UI elements by these strings (e.g. button names "Shorten",
+"Inspect", "Copy", "Reload"). Update the tests when you change them.
+
+## Testing
+
+- Tests live next to the code as `*.test.js(x)`. Vitest globals are enabled.
+  `src/test/setup.js` loads jest-dom, cleans up and restores mocks after each test,
+  and polyfills `matchMedia`.
+- Mock the network by spying on `lib/api` functions (components) or
+  `globalThis.fetch` (`api.test.js`).
+- `lib/qr` must be mocked in component tests because jsdom has no canvas.
+- `virtual:pwa-register/react` is aliased to `src/test/pwaRegisterStub.js` under
+  Vitest. Override it with `vi.mock` where needed.
 
 ## Conventions
 
-- Functional components with hooks; MUI `styled()` for component styles, plain CSS
-  in `src/styles/App.css` for layout.
-- API calls go through `src/actions` using callback-style `onSuccess`/`onError`.
-- Config and copy live in JSON under `src/data/`, not in components.
-- 2-space indentation, single quotes, semicolons used inconsistently — match the
-  surrounding file.
-
-## Known gotchas
-
-- `btoa(url)` can produce `/` and `+`, which land in the request path of
-  `POST /links/{url64}`; URL-safe base64 or `encodeURIComponent` would be safer, but
-  the backend must agree on the encoding before changing it.
-- `Text.jsx` uses `export default Text = …` (assignment to an undeclared variable),
-  which throws in strict-mode ES modules. It is only imported by `Feature.jsx`, which
-  is only reached via the commented-out `FeatureList` — fix it before re-enabling.
-- `FeatureList` renders `Feature` items without a `key` prop.
-- `Qrcode` targets a hard-coded `#canvas` id, so only one QR code per page works.
-- `clipboardCopy` relies on the deprecated `document.execCommand('copy')`.
-- `public/index.html` embeds a Google Analytics tag (`G-FNEFLS6LYS`).
+- Functional components with hooks. Style with MUI `sx`/theme. Plain CSS only for
+  the background (`SpaceBackground.css`).
+- Logic that can be tested without React goes in `src/lib`. Inject `window`-like
+  dependencies (see `swUpdates`, `analytics`, `Redirect`'s `navigate`) so tests
+  don't need global mocks.
+- Copy goes in `strings.json`, config in `settings.json`/env. No hard-coded user-facing text.
+- 2-space indentation, single quotes, semicolons.

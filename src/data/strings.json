@@ -1,39 +1,60 @@
 {
   "header": {
-    "title": "URL to QR",
-    "caption": "QR'ify your links!"
+    "title": "url2qr",
+    "caption": "Shorten links. Share them as QR codes. See every click."
+  },
+  "converter": {
+    "inputLabel": "Paste a long link, or one of your url2qr links",
+    "inputHelp": "Paste a url2qr short link to see its stats.",
+    "invalid": "That doesn't look like a web address.",
+    "tooLong": "Links can be at most {max} characters.",
+    "btnGo": "Shorten",
+    "btnView": "Inspect",
+    "btnReset": "Shorten another",
+    "outputLabel": "Your short link",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copyFailed": "Copy failed — select the link and copy it manually.",
+    "download": "Download QR",
+    "serverError": "We couldn't reach the server. Please try again.",
+    "unknown": "We couldn't find that short link."
+  },
+  "stats": {
+    "title": "Link stats",
+    "link": "Destination",
+    "redirects": "Redirects",
+    "views": "Unique viewers"
+  },
+  "redirect": {
+    "redirecting": "Redirecting you to",
+    "preview": "This short link points to",
+    "continue": "Continue to link",
+    "unknown": "This short link doesn't exist.",
+    "unsafe": "This short link points somewhere we won't send you automatically.",
+    "error": "We couldn't look up this short link. Please try again.",
+    "home": "Create your own short link"
+  },
+  "steps": [
+    {
+      "title": "Shorten",
+      "body": "Paste any long web address and get a compact url2qr link in one click."
+    },
+    {
+      "title": "Share as QR",
+      "body": "Every short link comes with a high-contrast QR code you can download and print."
+    },
+    {
+      "title": "Track",
+      "body": "Paste a short link back in to see where it goes, how often it was followed and by how many people."
+    }
+  ],
+  "stepsTitle": "How it works",
+  "update": {
+    "available": "A new version of url2qr is available.",
+    "reload": "Reload"
   },
   "footer": {
     "link": "https://url2qr.com/me",
     "creator": "Daa.Best"
-  },
-  "converter": {
-    "inputLabel": "your link here",
-    "outputLabel": "short link",
-    "ph": " ",
-    "btnGo": "Shrink!",
-    "btnView": "Inspect",
-    "btnDone": "Done",
-    "btnError": "Server Error",
-    "copyDefault": "Click to copy",
-    "copySuccess": "Copied Successfully!",
-    "copyFailed": "Copied failed."
-  },
-  "features": [
-    {
-      "name": "Feature 1",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
-      "link": "https://example.com"
-    },
-    {
-      "name": "Feature 2",
-      "description": "sed do eiusmod tempor incididunt ut labore et dolore.",
-      "link": "https://example.com"
-    },
-    {
-      "name": "Feature 3",
-      "description": " Ut enim ad minim veniam magna aliqua.",
-      "link": "https://example.com"
-    }
-  ]
+  }
 }

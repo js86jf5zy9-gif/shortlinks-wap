@@ -1,36 +1,44 @@
-# Shortlinks Web Application Protocol
-Shortlinks is a React wap for shortening and tracking urls
+# url2qr
+
+A React web app for shortening links, sharing them as QR codes and tracking
+clicks. It runs as an installable PWA with a parallax space background.
 
 ## Requirements
-- NPM 
-- NodeJS
+- Node.js 20.19+ and npm
 
-## Installation and Setup
-Copy `env.sample` to `.env` and fill in variables and install npm packages
+## Setup
 
 ```bash
-mv env.sample .env
+cp env.sample .env
 npm install
 ```
 
-## Run Locally
+Fill in `.env`. `VITE_GA_MEASUREMENT_ID` is optional (leave empty to disable
+analytics). The AWS variables are only needed for deployment.
+
+## Develop
 
 ```bash
-npm run start
+npm run dev
 ```
 
-## Deployment
+## Test and lint
 
-The project is assumed to be hosted on a s3 and behind a cloudfront instance. Ensure the `.env` file is correct.
+```bash
+npm test
+npm run lint
+```
+
+## Deploy
+
+The site is hosted on S3 behind CloudFront. CloudFront must return
+`/index.html` for 403/404 so short-link paths reach the app.
 
 ```bash
 npm run deploy
 ```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+See [AGENTS.md](AGENTS.md) for architecture, the API contract and content schemas.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

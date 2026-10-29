@@ -1,21 +1,26 @@
-import React from 'react';
-import { Typography } from '@material-ui/core';
+import { Box, Link, Typography } from '@mui/material';
 
-
-const Footer = ({link, creator}) => {
-  const year = new Date().getFullYear();
+export default function Footer({ link, creator }) {
   return (
-    <div className='footer'>
-      <Typography variant='overline'>
-        © {year}
+    <Box
+      component="footer"
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 2,
+        width: '100%',
+        py: 3,
+        pb: 'max(24px, env(safe-area-inset-bottom))',
+        color: 'text.secondary',
+      }}
+    >
+      <Typography variant="body2">© {new Date().getFullYear()} url2qr</Typography>
+      <Typography variant="body2">
+        Made with ❤️ by{' '}
+        <Link href={link} target="_blank" rel="noreferrer">
+          {creator}
+        </Link>
       </Typography>
-      <Typography variant='caption'>
-        Made with ❤️ 
-      </Typography>
-      <Typography variant='overline' style={{float: 'right'}}>
-        <a href={link} target='_blank' rel='noreferrer' >{creator}</a>
-      </Typography>
-    </div>
-  )
+    </Box>
+  );
 }
-export default (Footer);

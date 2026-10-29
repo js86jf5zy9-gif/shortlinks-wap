@@ -1,8 +1,5 @@
 {
   "domain": "url2qr.com",
-  "api": "api.url2qr.com",
-  "white": "#edf6f9",
-  "gray": "#b2b9bb",
-  "padding": 4,
-  "limit": 2048
+  "api": "https://api.url2qr.com",
+  "maxUrlLength": 2048
 }
