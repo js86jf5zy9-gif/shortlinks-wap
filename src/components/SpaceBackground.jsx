@@ -1,8 +1,8 @@
 import { useRef } from 'react';
 import useParallax from '../hooks/useParallax';
 import { STAR_LAYERS, starTile } from '../lib/starfield';
-import Moon from './Moon';
 import earth from '../assets/earth.webp';
+import moon from '../assets/moon.webp';
 import './SpaceBackground.css';
 
 const STARS = STAR_LAYERS.map((layer) => ({ ...layer, image: starTile(layer) }));
@@ -26,7 +26,7 @@ export default function SpaceBackground() {
         />
       ))}
       <div className="space__moon" data-parallax-rate="0.38">
-        <Moon />
+        <img src={moon} alt="" width="360" height="360" decoding="async" />
       </div>
       <div
         className="space__earth"

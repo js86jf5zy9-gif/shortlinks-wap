@@ -71,7 +71,6 @@ src/
   config.js                # Merges settings.json with VITE_* env overrides
   components/
     SpaceBackground.jsx/.css  # Fixed parallax sky: nebula, 3 star layers, moon, Earth photo
-    Moon.jsx               # SVG moon used by SpaceBackground
     Converter.jsx          # Input form: shorten a URL or inspect one of our short links
     ShortLinkResult.jsx    # Short link field, copy button, QR code
     QrCode.jsx             # <canvas> QR via lib/qr + PNG download
@@ -90,6 +89,7 @@ src/
     qr.js, clipboard.js
   data/settings.json, data/strings.json
   assets/earth.webp        # Night-side Earth photo (resized from the original NASA image)
+  assets/moon.webp         # Full-moon photo (Unsplash), cropped to a circle with transparent edges
   test/setup.js, test/pwaRegisterStub.js
 ```
 

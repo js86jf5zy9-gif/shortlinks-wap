@@ -38,10 +38,10 @@
   right: clamp(16px, 9vw, 160px);
   width: clamp(72px, 13vw, 170px);
   aspect-ratio: 1;
-  filter: drop-shadow(0 0 28px rgba(255, 246, 220, 0.28));
+  filter: brightness(1.12) drop-shadow(0 0 26px rgba(235, 240, 255, 0.22));
 }
 
-.space__moon svg {
+.space__moon img {
   display: block;
   width: 100%;
   height: 100%;
